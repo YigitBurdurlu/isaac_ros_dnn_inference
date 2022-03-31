@@ -44,7 +44,10 @@ private:
   // Desired properties of the image
   const int network_image_width_;
   const int network_image_height_;
+  const int image_rotation_;
   const std::string network_image_encoding_;
+  const std::string output_topic_;
+  const std::string input_topic_;
   const bool maintain_aspect_ratio_;
   const bool center_crop_;
   const std::vector<double> image_mean_;

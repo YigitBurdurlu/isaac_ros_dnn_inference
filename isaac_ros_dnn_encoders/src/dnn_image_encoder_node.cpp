@@ -53,10 +53,13 @@ struct DnnImageEncoderNode::DnnImageEncoderImpl
 {
   DnnImageEncoderNode * node;
   int image_width_;
+  int image_rotation_;
   int image_height_;
   std::string image_encoding_;
   std::string normalization_type_;
   std::string tensor_name_;
+  std::string input_topic_;
+  std::string output_topic_;
   bool maintain_aspect_ratio_;
   bool center_crop_;
   std::vector<double> image_mean_;
@@ -74,6 +77,9 @@ struct DnnImageEncoderNode::DnnImageEncoderImpl
     center_crop_ = node->center_crop_;
     image_mean_ = node->image_mean_;
     image_stddev_ = node->image_stddev_;
+    output_topic_= node->output_topic_;
+    input_topic_ = node->input_topic_;
+    image_rotation_ = node->image_rotation_; 
   }
 
   isaac_ros_nvengine_interfaces::msg::TensorList OnCallback(
@@ -83,7 +89,25 @@ struct DnnImageEncoderNode::DnnImageEncoderImpl
     cv_bridge::CvImagePtr image_ptr;
     image_ptr = cv_bridge::toCvCopy(image_msg, g_str_to_image_encoding.at(image_encoding_));
 
+    //Rotation
+    if (image_rotation_ != 0){
+      switch(image_rotation_){
+	case(90):
+		cv::rotate(image_ptr->image, image_ptr->image, cv::ROTATE_90_CLOCKWISE);
+		break;
+	case(180):
+		cv::rotate(image_ptr->image, image_ptr->image, cv::ROTATE_180);
+		break;
+        case(-90):
+		cv::rotate(image_ptr->image, image_ptr->image, cv::ROTATE_90_COUNTERCLOCKWISE);
+		break;
+	default:
+		break;
+      }
+    }
+
     // Resize the image to the user specified dimensions
+    
     cv::Mat image_resized;
 
     if (maintain_aspect_ratio_) {
@@ -180,24 +204,27 @@ DnnImageEncoderNode::DnnImageEncoderNode(const rclcpp::NodeOptions options)
   // Parameters
   network_image_width_(declare_parameter<int>("network_image_width", 224)),
   network_image_height_(declare_parameter<int>("network_image_height", 224)),
+  image_rotation_(declare_parameter<int>("image_rotation", 0)),
   network_image_encoding_(declare_parameter<std::string>("network_image_encoding", "rgb8")),
+  output_topic_(declare_parameter<std::string>("output_topic", "encoded_image")),
+  input_topic_(declare_parameter<std::string>("input_topic", "image")),
   maintain_aspect_ratio_(declare_parameter<bool>("maintain_aspect_ratio", false)),
   center_crop_(declare_parameter<bool>("center_crop", false)),
   image_mean_(declare_parameter<std::vector<double>>("image_mean", {0.5, 0.5, 0.5})),
   image_stddev_(declare_parameter<std::vector<double>>("image_stddev", {0.5, 0.5, 0.5})),
   tensor_name_(declare_parameter<std::string>("tensor_name", "input")),
   network_normalization_type_(declare_parameter<std::string>(
-      "network_normalization_type", "unit_scaling")),
+      "network_normalization_type", "unit_scaling")), 
   // Subscriber
   image_sub_(create_subscription<sensor_msgs::msg::Image>(
-      "image",
+      input_topic_,
       rclcpp::SensorDataQoS(),
       std::bind(&DnnImageEncoderNode::DnnImageEncoderCallback,
       this, std::placeholders::_1))),
   // Publisher
   tensor_pub_(
     create_publisher<isaac_ros_nvengine_interfaces::msg::TensorList>(
-      "encoded_tensor", 1)),
+      output_topic_, 1)),
   // Impl initialization
   impl_(std::make_unique<DnnImageEncoderImpl>())
 {
