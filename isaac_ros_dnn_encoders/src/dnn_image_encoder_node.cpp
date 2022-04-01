@@ -92,13 +92,13 @@ struct DnnImageEncoderNode::DnnImageEncoderImpl
     //Rotation
     if (image_rotation_ != 0){
       switch(image_rotation_){
-	case(90):
+	case 90:
 		cv::rotate(image_ptr->image, image_ptr->image, cv::ROTATE_90_CLOCKWISE);
 		break;
-	case(180):
+	case 180:
 		cv::rotate(image_ptr->image, image_ptr->image, cv::ROTATE_180);
 		break;
-        case(-90):
+        case -90:
 		cv::rotate(image_ptr->image, image_ptr->image, cv::ROTATE_90_COUNTERCLOCKWISE);
 		break;
 	default:
@@ -143,11 +143,10 @@ struct DnnImageEncoderNode::DnnImageEncoderImpl
       }
     }
     cv::resize(image_ptr->image, image_resized, cv::Size(image_width_, image_height_));
-
     // Normalize tensor depending on normalization type required
     switch (g_str_to_normalization_type.at(normalization_type_)) {
       case NormalizationTypes::kUnitScaling:
-        image_resized.convertTo(image_resized, CV_32F, 1.0f / 255.0f);
+	image_resized.convertTo(image_resized, CV_32F, 1.0f / 255.0f);
         break;
       case NormalizationTypes::kPositiveNegative:
         image_resized.convertTo(image_resized, CV_32F, 2.0f / 255.0f, -1.0f);
